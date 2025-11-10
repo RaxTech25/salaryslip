@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pay Slip</title>
+  <style>
+    :root { --muted:#4b5563; }
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff}
+
+    .actions{max-width:210mm;margin:14px auto 0;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
+    .btn{appearance:none;border:1px solid #111;border-radius:6px;padding:8px 12px;font-weight:700;background:#111;color:#fff;cursor:pointer}
+    .btn.light{background:#fff;color:#111}
+    .hint{font-size:12px;color:var(--muted);margin-right:auto;min-width:220px}
+    .select{appearance:none;border:1px solid #111;border-radius:6px;padding:8px 12px;background:#fff;color:#111;cursor:pointer;max-width:360px}
+
+    .sheet{width:210mm;min-height:297mm;margin:10px auto;padding:10mm 12mm;border:1px solid #e5e7eb;background:#fff;font-family:"Times New Roman", Times, serif;color:#000;}
+
+    /* Header with left logo and centered text */
+    .header{display:flex;align-items:center;gap:16px;padding-bottom:6px;border-bottom:2px solid #000}
+    .crest{flex-shrink:0;width:90px;height:100px;object-fit:contain;margin-left:6px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;display:none}
+    .header-text{text-align:center;flex:1;}
+    .title{font-size:20px;font-weight:700;margin:6px 0 2px;display:none}
+    .address{font-size:12px;line-height:1.2;margin:0;display:none}
+    .period{font-size:14px;font-weight:700;margin:8px 0}
+
+    /* Info key-value grid */
+    .kv{display:grid;grid-template-columns:1fr 1fr;column-gap:36px;row-gap:6px;margin:10px 0 6px}
+    .kv .row{display:grid;grid-template-columns:140px 6px 1fr;align-items:baseline;font-size:13px}
+    .kv .row .label{white-space:nowrap;font-weight:700}
+    .kv .row .sep{text-align:center}
+
+    /* Earnings/Deductions table */
+    table.payslip{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px}
+    table.payslip th,table.payslip td{border:1px solid #000;padding:6px 8px}
+    table.payslip thead th{background:#f8f8f8;font-weight:700}
+    table.payslip .num{text-align:right}
+    table.payslip tfoot td{font-weight:700}
+
+    /* Net pay */
+    .net{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:baseline;margin:10px 0 4px}
+    .net .label{font-weight:700}
+    .words{margin:0 0 10px;font-size:13px}
+
+    /* Footer */
+    .footer{display:grid;grid-template-columns:1fr 1fr;align-items:end;margin-top:10px}
+    .footer .date{font-size:13px}
+    .footer .sign{text-align:right;font-size:13px}
+
+    /* Print settings */
+    @page{ size: A4; margin: 0; }
+    @media print{ 
+      .actions,.hint,#status{display:none !important}
+      .sheet{border:none;margin:0;width:auto;min-height:auto;padding:0}
+    }
+
+    [contenteditable]{outline:none}
+    .editing [contenteditable]:focus{outline:1px dashed #9ca3af;background:#fafafa}
+
+    #status{max-width:210mm;margin:8px auto 0;padding:8px 12px;border:1px solid #fee2e2;background:#fef2f2;color:#b91c1c;border-radius:8px;display:none}
+    #status.ok{border-color:#d1fae5;background:#ecfdf5;color:#065f46}
+  </style>
+</head>
+<body>
+  <div id="status"></div>
+  <div class="actions">
+    <!-- School dropdown -->
+    <label for="schoolSelect" class="sr-only" style="position:absolute;left:-9999px">School</label>
+    <select id="schoolSelect" class="select" title="Select school (Delhi / Mumbai / Chennai)"></select>
+    <button id="toggleEdit" class="btn light" aria-pressed="false">Edit</button>
+    <input id="logoUpload" type="file" accept="image/*" class="btn light" title="Upload logo (embeds as data URL)"/>
+    <button class="btn light" onclick="window.print()">Print</button>
+    <button id="downloadPdf" class="btn">Download PDF (A4)</button>
+  </div>
+
+  <section id="slip" class="sheet">
+    <div class="header">
+      <img id="crest" class="crest" src="" alt="Logo" crossorigin="anonymous"/>
+      <div class="header-text">
+        <h1 class="title" data-edit></h1>
+        <p class="address" data-edit></p>
+        <div class="period" data-edit>Pay Slip for the Month of October - 2025</div>
+      </div>
+    </div>
+
+    <div class="kv">
+      <div class="row"><div class="label" data-edit>Name</div><div class="sep">:</div><div id="empName" class="val" data-edit>Shivika Dogra</div></div>
+      <div class="row"><div class="label" data-edit>Working Days</div><div class="sep">:</div><div class="val" data-edit>26.00</div></div>
+      <div class="row"><div class="label" data-edit>Employee Code</div><div class="sep">:</div><div class="val" data-edit>41160</div></div>
+      <div class="row"><div class="label" data-edit>Present Days</div><div class="sep">:</div><div class="val" data-edit>26.00</div></div>
+      <div class="row"><div class="label" data-edit>Designation</div><div class="sep">:</div><div class="val" data-edit>PRT</div></div>
+      <div class="row"><div class="label" data-edit>Department</div><div class="sep">:</div><div class="val" data-edit>TEACHERS</div></div>
+    </div>
+
+    <table class="payslip" aria-label="Earnings and Deductions">
+      <thead>
+        <tr>
+          <th data-edit style="width:45%">Earning Details</th>
+          <th data-edit style="width:10%">Amt(Rs.)</th>
+          <th data-edit style="width:35%">Deduction Details</th>
+          <th data-edit style="width:10%">Amt(Rs.)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-edit>Basic Salary</td><td class="num" data-edit>36500.00</td>
+          <td data-edit>PF</td><td class="num" data-edit>4774.00</td>
+        </tr>
+        <tr>
+          <td data-edit>GRADE PAY</td><td class="num" data-edit>0.00</td>
+          <td data-edit>TDS</td><td class="num" data-edit>2000.00</td>
+        </tr>
+        <tr><td data-edit>DA</td><td class="num" data-edit>0.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>Dearness Allowance 7TH</td><td class="num" data-edit>3285.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>HRA</td><td class="num" data-edit>0.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>SPECIAL ALLOWANCE</td><td class="num" data-edit>0.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>ARREAR</td><td class="num" data-edit>0.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>HRA @16</td><td class="num" data-edit>5840.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+        <tr><td data-edit>HRA @20</td><td class="num" data-edit>0.00</td><td data-edit></td><td class="num" data-edit></td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="num" data-edit>Total</td><td id="earnTotal" class="num" data-edit>45625.00</td>
+          <td class="num" data-edit>Total</td><td id="dedTotal" class="num" data-edit>6774.00</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="net"><div class="label" data-edit><b>Net Pay</b></div><div id="netPay" class="val" data-edit>: <b>38851.00</b></div></div>
+    <p id="netWords" class="words" data-edit><b>(Thirty Eight Thousand Eight Hundred and Fifty One Rupees Only)</b></p>
+
+    <div class="footer">
+      <div class="date" data-edit><b>Date : October 02, 2025</b></div>
+      <div class="sign" data-edit><b>Signature</b></div>
+    </div>
+
+    <div style="text-align:center;margin-top:10px;font-size:13px"><b>System generated salary slip.</b></div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    const slip=document.getElementById('slip');
+    const crest=document.getElementById('crest');
+    const statusEl=document.getElementById('status');
+    const toggleBtn=document.getElementById('toggleEdit');
+    const schoolSelect=document.getElementById('schoolSelect');
+
+    function showStatus(msg,ok=false){
+      statusEl.textContent=msg;statusEl.style.display='block';statusEl.className=ok?'ok':'';
+      clearTimeout(showStatus._t); showStatus._t=setTimeout(()=>{statusEl.style.display='none';},2500);
+    }
+
+    // Hide banners on print entirely
+    window.addEventListener('beforeprint',()=>{ statusEl.style.display='none'; });
+
+    // Toggle edit mode: enable contenteditable on all [data-edit]
+    function setEditable(on){
+      document.body.classList.toggle('editing',on);
+      toggleBtn.setAttribute('aria-pressed',on);
+      toggleBtn.textContent=on?'Done':'Edit';
+      slip.querySelectorAll('[data-edit]').forEach(el=>el.setAttribute('contenteditable', on ? 'true':'false'));
+    }
+    setEditable(false);
+    toggleBtn.addEventListener('click',()=> setEditable(toggleBtn.getAttribute('aria-pressed')!=='true'));
+
+    // Custom logo override (user upload)
+    document.getElementById('logoUpload')?.addEventListener('change',e=>{
+      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader();
+      r.onload=()=>{ crest.src=r.result; crest.style.display='block'; showStatus('Logo embedded for export.', true); };
+      r.readAsDataURL(f);
+    });
+
+    // ——— School directory (Punjab, Delhi, Mumbai, Chennai) with your provided logos ———
+    const SCHOOL_DIRECTORY=[
+	
+	  //PUNJAB
+	  {city:'Punjab', name:'Delhi Public School Ludhiana', address:'Vill. Jhammat, P.O. Ayali Kalan, Ludhiana 142 027', phone:'+91 70870 19118, 70870 20118', logo:'https://dps-ludhiana-edunext-cf.edunexttechnologies.com/1603779333707_dps_school_logo.png'},	  
+	  
+      // DELHI
+      {city:'Delhi', name:'The Shri Ram School', address:'D-3 Street, Vasant Vihar, New Delhi 110057', phone:'011 2614 0884', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQb-h4fXx05y40c8ENGFu9psrdpHZTsU4KS5ZKy98s7pnzoZ5npCRr1vwCjZPtOS6eHZgo&usqp=CAU'},
+      {city:'Delhi', name:'Springdales School', address:'Pusa Road, Karol Bagh, New Delhi 110005', phone:'+91 9811772507', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN3J6lSi7XlSlduVuJwn2m-xpq9uurD9vNWQ&s'},
+      {city:'Delhi', name:'Modern School', address:'Poorvi Marg, Vasant Vihar, New Delhi 110057', phone:'011 2614 4388', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRY9_gkp_-SyC5zH6LlWJlTHAOEMvqwxgBorHU8WpoM1OEIUsh59IgraayRzqgGS0_M2KA&usqp=CAU'},
+      {city:'Delhi', name:'Sardar Patel Vidyalaya', address:'Lodhi Estate, New Delhi 110003', phone:'011 4309 5221', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0E_jKM-9wOhi7wHN3fny4P1D87zb5CU-prIEBVDpRK5cM-ywEkWTJsvSKFSujzu84Dns&usqp=CAU'},
+      {city:'Delhi', name:'Delhi Public School Society', address:'Vasant Vihar, New Delhi 110057', phone:'011 4911 6600', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgqGW6e_EGKxUu83GoleISjvynUMnkLFJRGg&s'},
+
+      // MUMBAI
+      {city:'Mumbai', name:'Bombay Scottish School', address:'Veer Savarkar Marg, Mahim, Mumbai 400016', phone:'022 2445 1365', logo:'https://img.youtube.com/vi/KJGpplhqoB0/hqdefault.jpg'},
+      {city:'Mumbai', name:'Cathedral & John Connon School', address:'Fort, Mumbai 400001', phone:'022 4077 8140', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTddJXGvIoW1PsJqDv8-oJQ84KxoFnvcn9IGz8KWORTi1kgRZn2EcihyYWl7h6MyH9K9oo&s'},
+      {city:'Mumbai', name:'Campion School', address:'Cooperage Road, Fort, Mumbai 400001', phone:'+91-22-2202 0575', logo:'https://upload.wikimedia.org/wikipedia/en/e/ec/Campion_crest.gif'},
+      {city:'Mumbai', name:'J.B. Petit High School for Girls', address:'Fort, Mumbai 400001', phone:'022-35136437', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQznDJpS2XLbKo9h6Ti2Z_llaO_mmvrY6OSyA&s'},
+      {city:'Mumbai', name:'Dhirubhai Ambani International School', address:'BKC, Bandra East, Mumbai 400051', phone:'022 4061 7000', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnIKvhqGL1HNr-IQsY52RMQTBGgJ5CkyMOlQ&s'},
+
+      // CHENNAI
+      {city:'Chennai', name:'Velammal Vidhyashram Matric Higher Secondary School', address:'4/176, Surapet Main Rd, Puzhal, Kadirvedu,Tamil Nadu 600066', phone:'+91 7855005555', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQsWuuQfyfxRUxwY6ccowU_cG7xWazIL_J6zw&s'},
+      {city:'Chennai', name:'Chettinad Vidyashram', address:'R.A. Puram, Chennai 600028', phone:'044 2493 3722', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbj8OiQGn_JHo10Xgn4e8RUQQCTJEfvTMZCw&s'},
+      {city:'Chennai', name:'Vidya Mandir Senior Secondary School', address:'Mylapore, Chennai 600004', phone:'044 2498 0834', phone:'', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRp_4JBXIDpuCnkAsWsXsncj54p4jLmdlADbQ&s'},
+      {city:'Chennai', name:'DAV Boys / Girls Sr. Sec', address:'Gopalapuram, Chennai 600086', phone:'044 2811 4193', logo:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBqSaTaQiAcSl_InkGY7LvqDeCA07VsUvQ0Fn4HenlDNc-BfYW2dx9rO2Hr7F1yuxkLrw&usqp=CAU'},
+      {city:'Chennai', name:'Bala Vidya Mandir', address:'Adyar, Chennai 600020', phone:'044 2442 4445', logo:'https://www.balavidyamandir.com/shared/logo.png'}
+    ];
+
+    // Populate dropdown grouped by city; keep header hidden until a selection is made
+    function populateDropdown(){
+      const byCity = SCHOOL_DIRECTORY.reduce((m,s)=>{ (m[s.city] ||= []).push(s); return m; },{});
+      schoolSelect.innerHTML='';
+      const placeholder=document.createElement('option');
+      placeholder.value=''; placeholder.textContent='— Select School —';
+      schoolSelect.appendChild(placeholder);
+      Object.keys(byCity).sort().forEach(city=>{
+        const og=document.createElement('optgroup');
+        og.label=city;
+        byCity[city].forEach((s)=>{
+          const opt=document.createElement('option');
+          opt.value=city+"::"+s.name;
+          opt.textContent=s.name;
+          og.appendChild(opt);
+        });
+        schoolSelect.appendChild(og);
+      });
+    }
+
+    function svgPlaceholder(name){
+      const initials = (name.match(/\b[A-Z]/g)||[]).slice(0,3).join('');
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='180' height='200'>`
+                + `<rect width='100%' height='100%' fill='white' stroke='black'/>`
+                + `<text x='50%' y='55%' font-family='Times,serif' font-size='36' text-anchor='middle'>${initials}</text>`
+                + `</svg>`;
+      return 'data:image/svg+xml;base64,' + btoa(svg);
+    }
+
+    function loadLogo(url, name){
+      return new Promise((resolve)=>{
+        if(!url){ resolve(svgPlaceholder(name)); return; }
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>resolve(url);
+        img.onerror=()=>resolve(svgPlaceholder(name));
+        img.src=url;
+      });
+    }
+
+    async function applySchool(school){
+      if(!school) return;
+      const titleEl = slip.querySelector('.title');
+      const addrEl  = slip.querySelector('.address');
+      titleEl.textContent = school.name;
+      addrEl.innerHTML = `${school.address||''}${school.phone?`<br>Phone : ${school.phone}`:''}`;
+      crest.src = await loadLogo(school.logo, school.name);
+      crest.style.display='block'; titleEl.style.display='block'; addrEl.style.display=(school.address||school.phone)?'block':'none';
+      showStatus(`Loaded school: ${school.name}`, true);
+    }
+
+    schoolSelect.addEventListener('change', ()=>{
+      const val=schoolSelect.value; if(!val) return; 
+      const [city, name] = val.split('::');
+      const school = SCHOOL_DIRECTORY.find(s=>s.city===city && s.name===name);
+      applySchool(school);
+    });
+
+    // ——— Auto-calculation for totals & net pay ———
+    function parseAmt(txt){
+      if(!txt) return 0; return parseFloat(String(txt).replace(/[^0-9.\-]/g,'')||'0');
+    }
+    function formatAmt(n){
+      return n.toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    function toIndianWords(num){
+      const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+      const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+      function below100(n){ if(n<20) return a[n]; const tens=b[Math.floor(n/10)], ones=a[n%10]; return tens + (n%10?(' '+ones):''); }
+      function below1000(n){ const h=Math.floor(n/100), r=n%100; return (h? a[h]+' Hundred'+(r?' and ':'') : '') + (r? below100(r):''); }
+      function words(n){ if(n===0) return 'Zero'; let str=''; const crore=Math.floor(n/10000000); n%=10000000; const lakh=Math.floor(n/100000); n%=100000; const thousand=Math.floor(n/1000); n%=1000; const hundred=n; if(crore) str+=below1000(crore)+' Crore'; if(lakh) str+=(str?' ':'')+below1000(lakh)+' Lakh'; if(thousand) str+=(str?' ':'')+below1000(thousand)+' Thousand'; if(hundred) str+=(str?' ':'')+below1000(hundred); return str; }
+      return words(Math.floor(num)) + ' Rupees Only';
+    }
+
+    function recalc(){
+      const rows=[...slip.querySelectorAll('table.payslip tbody tr')];
+      let earn=0, ded=0;
+      rows.forEach(tr=>{
+        const tds=tr.querySelectorAll('td');
+        earn += parseAmt(tds[1]?.textContent);
+        ded  += parseAmt(tds[3]?.textContent);
+      });
+      document.getElementById('earnTotal').textContent = formatAmt(earn);
+      document.getElementById('dedTotal').textContent  = formatAmt(ded);
+      const net = Math.max(0, earn - ded);
+      document.getElementById('netPay').innerHTML = ': <b>'+formatAmt(net)+'</b>';
+      document.getElementById('netWords').innerHTML = '<b>(' + toIndianWords(net) + ')</b>';
+    }
+
+    slip.addEventListener('input', (e)=>{ if(e.target.matches('[data-edit]')) recalc(); });
+    recalc();
+
+    // Initialize dropdown
+    populateDropdown();
+
+    // PDF export (Name-SchoolName.pdf)
+    async function exportPDF(){
+      const {jsPDF}=window.jspdf; if(!window.html2canvas || !jsPDF){ return alert('Exporter libraries failed to load'); }
+      const wasEditing=document.body.classList.contains('editing');
+      setEditable(false);
+      const canvas=await html2canvas(slip,{scale:2,useCORS:true,backgroundColor:'#fff'});
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const pageW=210,pageH=297,margin=10; const imgW=pageW-margin*2; const imgH=(canvas.height*imgW)/canvas.width;
+      if(imgH<=pageH-margin*2){ pdf.addImage(canvas.toDataURL('image/png'),'PNG',margin,margin,imgW,imgH,'','FAST'); }
+      else { const pxPageH=Math.floor(((pageH-margin*2)*canvas.width)/imgW); let sY=0; while(sY<canvas.height){ const sCanvas=document.createElement('canvas'); sCanvas.width=canvas.width; sCanvas.height=Math.min(pxPageH,canvas.height-sY); sCanvas.getContext('2d').drawImage(canvas,0,sY,canvas.width,sCanvas.height,0,0,sCanvas.width,sCanvas.height); pdf.addImage(sCanvas.toDataURL('image/png'),'PNG',margin,margin,imgW,(sCanvas.height*imgW)/canvas.width,'','FAST'); sY+=sCanvas.height; if(sY<canvas.height) pdf.addPage(); } }
+      const name=(document.getElementById('empName')?.textContent||'Payslip').trim().replace(/\s+/g,' ');
+      const school=(slip.querySelector('.title')?.textContent||'School').trim().replace(/\s+/g,' ');
+      pdf.save(`${name}-${school}.pdf`);
+      if(wasEditing) setEditable(true);
+    }
+    document.getElementById('downloadPdf')?.addEventListener('click', exportPDF);
+  </script>
+</body>
+</html>
